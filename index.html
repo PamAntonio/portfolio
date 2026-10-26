@@ -182,6 +182,9 @@
   .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 24px; font-size: 13px; font-weight: 500; }
   .flow span { padding: 9px 14px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
   .flow i { font-style: normal; color: var(--sage); }
+  .panel .try { align-self: flex-start; margin: -6px 0 24px; font-weight: 600; font-size: 15px; color: var(--sage-deep); text-decoration: none; border-bottom: 1px solid var(--sage); padding-bottom: 2px; }
+  .panel .try i { font-style: normal; display: inline-block; transition: transform .2s ease; }
+  .panel .try:hover i { transform: translateX(4px); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
   .chip { font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 999px; background: var(--glow); color: var(--sage-deep); }
 
@@ -346,46 +349,54 @@
         <div class="section-head reveal"><span class="num">02</span><span class="eyebrow">Selected work</span></div>
         <h2 class="title"><span class="line"><span>Projects that keep a</span></span><span class="line"><span>business <em>moving.</em></span></span></h2>
       </div>
-      <div class="counter"><span id="cur">01</span> <small>/ 06</small></div>
+      <div class="counter"><span id="cur">01</span> <small>/ 07</small></div>
     </div>
     <div class="h-track" id="track">
       <article class="panel">
-        <div class="idx">01 — Finance automation</div>
+        <div class="idx">01 — Applied AI · live demo</div>
+        <h3>Mapping Copilot</h3>
+        <p>Paste a record from two systems and Claude drafts the field mapping, with a confidence score and reason for each line. A person approves every line before anything runs, and the page then runs the mapping and exports it as code.</p>
+        <div class="flow"><span>Claude drafts</span><i>→</i><span>person approves</span><i>→</i><span>run &amp; export</span></div>
+        <a class="try" href="/mapping-copilot/">Try it live <i>→</i></a>
+        <div class="chips"><span class="chip">Claude API</span><span class="chip">structured outputs</span><span class="chip">Cloudflare Workers</span><span class="chip">human-in-the-loop</span></div>
+      </article>
+      <article class="panel">
+        <div class="idx">02 — Finance automation</div>
         <h3>NetSuite ⇄ Coupa integration</h3>
         <p>Moved invoices, expense lines and employee records between the ERP and the spend-management system, so the finance team could run procure-to-pay without re-entering data.</p>
         <div class="flow"><span>NetSuite</span><i>⇄</i><span>Boomi</span><i>⇄</i><span>Coupa</span></div>
         <div class="chips"><span class="chip">Boomi</span><span class="chip">REST APIs</span><span class="chip">data mapping</span></div>
       </article>
       <article class="panel">
-        <div class="idx">02 — Sales operations</div>
+        <div class="idx">03 — Sales operations</div>
         <h3>Salesforce → NetSuite sales orders</h3>
         <p>Kept sales orders flowing from the CRM into the ERP, and traced failures through logs and API responses in both directions to the exact record that broke.</p>
         <div class="flow"><span>Salesforce</span><i>→</i><span>Boomi</span><i>→</i><span>NetSuite</span></div>
         <div class="chips"><span class="chip">Salesforce</span><span class="chip">NetSuite</span><span class="chip">monitoring</span><span class="chip">debugging</span></div>
       </article>
       <article class="panel">
-        <div class="idx">03 — HR &amp; finance</div>
+        <div class="idx">04 — HR &amp; finance</div>
         <h3>BambooHR → NetSuite employee sync</h3>
         <p>Kept employee records in NetSuite in step with BambooHR, the HR system of record, so finance worked from the same people data as HR for about 500 employees, without manual re-entry.</p>
         <div class="flow"><span>BambooHR</span><i>→</i><span>Boomi</span><i>→</i><span>NetSuite</span></div>
         <div class="chips"><span class="chip">Boomi</span><span class="chip">BambooHR</span><span class="chip">NetSuite</span><span class="chip">employee data</span></div>
       </article>
       <article class="panel">
-        <div class="idx">04 — HR &amp; recruiting</div>
+        <div class="idx">05 — HR &amp; recruiting</div>
         <h3>BambooHR → Greenhouse employee sync</h3>
         <p>Synced employee records from BambooHR into Greenhouse, so the recruiting team worked from the same up-to-date employee list as HR instead of maintaining a separate copy.</p>
         <div class="flow"><span>BambooHR</span><i>→</i><span>Boomi</span><i>→</i><span>Greenhouse</span></div>
         <div class="chips"><span class="chip">Boomi</span><span class="chip">BambooHR</span><span class="chip">Greenhouse</span><span class="chip">data mapping</span></div>
       </article>
       <article class="panel">
-        <div class="idx">05 — Responsible AI</div>
+        <div class="idx">06 — Responsible AI</div>
         <h3>An AI agent that asks first</h3>
         <p>Built an agent in Boomi Agent Studio to reorganize folders across every project, then held it back from running on its own. Because it moved production files, I rebuilt it to get a person's approval before each change.</p>
         <div class="flow"><span>agent proposes</span><i>→</i><span>person approves</span><i>→</i><span>move</span></div>
         <div class="chips"><span class="chip">Boomi Agent Studio</span><span class="chip">human-in-the-loop</span><span class="chip">AI safety</span></div>
       </article>
       <article class="panel">
-        <div class="idx">06 — Cost savings</div>
+        <div class="idx">07 — Cost savings</div>
         <h3>A $4–5K overage, traced and cut</h3>
         <p>Traced an unexpected platform overage to nested connector calls in our own processes and reduced executions. Then managed the vendor renewal, escalated to the CTO and CFO when it stalled, and closed the contract with 20 connectors.</p>
         <div class="flow"><span>overage</span><i>→</i><span>root cause</span><i>→</i><span>renewal</span></div>

@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapping Copilot</title>
+<meta name="description" content="Paste a record from two business systems. Claude drafts the field mapping with confidence scores, a person approves each line, and the page runs the transform live. Built by Deanne Pamela Villalon.">
+<link rel="canonical" href="https://pamvillalon.com/mapping-copilot/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://pamvillalon.com/mapping-copilot/">
+<meta property="og:title" content="Mapping Copilot — AI drafts the integration, a person signs off">
+<meta property="og:description" content="Claude drafts a field mapping between two systems; every line waits for human approval before it runs.">
+<meta property="og:image" content="https://pamvillalon.com/img/og-card.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234f5e47'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='30' text-anchor='middle' fill='%23f3efe6'%3EDV%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3efe6; --surface: #fbf9f4; --soft: #e6e7da; --ink: #2f332b; --muted: #6e7266;
+    --line: #dcd6c8; --sage: #7d8f72; --sage-deep: #4f5e47; --clay: #b98e6c; --glow: #dfe3d2;
+    --risk: #a5523f; --risk-soft: #f3e0d8; --clay-soft: #f1e6da;
+    --shadow: 0 1px 2px rgba(47,51,43,.04), 0 18px 40px -18px rgba(47,51,43,.18);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161814; --surface: #1e211b; --soft: #23271f; --ink: #e9e6dc; --muted: #a4a596;
+      --line: #32362c; --sage: #a3b496; --sage-deep: #c4d1b5; --clay: #d0ac8c; --glow: #2a3025;
+      --risk: #df917b; --risk-soft: #3a2621; --clay-soft: #33291f;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 40px -18px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161814; --surface: #1e211b; --soft: #23271f; --ink: #e9e6dc; --muted: #a4a596;
+    --line: #32362c; --sage: #a3b496; --sage-deep: #c4d1b5; --clay: #d0ac8c; --glow: #2a3025;
+    --risk: #df917b; --risk-soft: #3a2621; --clay-soft: #33291f;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 40px -18px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 Manrope, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  .serif { font-family: "Cormorant Garamond", Georgia, serif; }
+  em { font-style: italic; color: var(--sage); }
+  code, .mono { font-family: var(--mono); font-size: .86em; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--clay); }
+  .muted { color: var(--muted); }
+
+  /* Top bar */
+  .bar { border-bottom: 1px solid var(--line); }
+  .bar .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
+  .logo { font-family: "Cormorant Garamond", serif; font-size: 22px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .logo span { color: var(--clay); }
+  .bar nav { display: flex; align-items: center; gap: 18px; font-size: 14px; }
+  .bar nav a { text-decoration: none; color: var(--muted); }
+  .bar nav a:hover { color: var(--ink); }
+  .theme-btn { background: none; border: 1px solid var(--line); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; }
+
+  /* Hero */
+  .hero { padding-top: 72px; padding-bottom: 40px; }
+  .hero h1 { font-family: "Cormorant Garamond", serif; font-weight: 500; font-size: clamp(52px, 8vw, 104px); line-height: .95; letter-spacing: -.02em; margin: 14px 0 22px; }
+  .hero .lede { font-size: clamp(18px, 1.6vw, 21px); max-width: 720px; margin: 0; color: var(--muted); }
+  .hero .lede b { color: var(--ink); font-weight: 600; }
+  .steps { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .steps span { border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; background: var(--surface); }
+  .steps span b { color: var(--clay); margin-right: 6px; font-weight: 600; }
+
+  /* Sections */
+  section.block { padding: 36px 0; }
+  .head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .head .num { font-family: "Cormorant Garamond", serif; color: var(--clay); font-size: 20px; }
+  .head h2 { font-family: "Cormorant Garamond", serif; font-weight: 500; font-size: clamp(32px, 3.6vw, 46px); margin: 0; line-height: 1.05; }
+  .head .aside { margin-left: auto; font-size: 14px; color: var(--muted); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+
+  /* Presets + editors */
+  .presets { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; cursor: pointer; font-size: 14px; }
+  .chip[aria-pressed="true"] { background: var(--sage-deep); border-color: var(--sage-deep); color: var(--bg); }
+  .editors { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .editor { padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .editor label { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .editor input { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 8px 12px; font-weight: 600; }
+  .editor textarea {
+    width: 100%; height: 340px; resize: vertical; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--bg); padding: 12px 14px; font: 13px/1.55 var(--mono); tab-size: 2;
+  }
+  .editor textarea:focus, .editor input:focus { outline: 2px solid var(--sage); outline-offset: 1px; }
+  .validity { font-size: 13px; color: var(--muted); min-height: 1.4em; }
+  .validity.bad { color: var(--risk); }
+
+  .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 20px; }
+  .btn {
+    border: 0; border-radius: 999px; padding: 13px 26px; cursor: pointer; font-weight: 600;
+    background: var(--sage-deep); color: var(--bg); transition: transform .15s ease, opacity .15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:disabled { opacity: .55; cursor: progress; transform: none; }
+  .btn.ghost { background: none; color: var(--ink); border: 1px solid var(--line); padding: 9px 16px; font-size: 14px; }
+  .status { font-size: 14px; color: var(--muted); }
+  .status.bad { color: var(--risk); }
+  .mode { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 4px 10px; }
+  .mode.live { background: var(--glow); color: var(--sage-deep); }
+  .mode.saved { background: var(--clay-soft); color: var(--clay); }
+
+  /* Review */
+  #review[hidden], #run[hidden] { display: none; }
+  .summary { padding: 20px 22px; font-size: 17px; margin-bottom: 18px; }
+  .tally { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .tally .pill { font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+  .tally .pill b { font-weight: 600; }
+  .rows { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; padding: 14px 18px; align-items: start; }
+  .row.approved { border-color: color-mix(in srgb, var(--sage) 55%, var(--line)); }
+  .row.rejected { opacity: .55; }
+  .row.rejected .target { text-decoration: line-through; }
+  .decide { display: flex; gap: 6px; padding-top: 2px; }
+  .decide button {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg);
+    cursor: pointer; font-size: 15px; line-height: 1;
+  }
+  .decide button[aria-pressed="true"].yes { background: var(--sage-deep); border-color: var(--sage-deep); color: var(--bg); }
+  .decide button[aria-pressed="true"].no { background: var(--risk); border-color: var(--risk); color: var(--bg); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+  .target { font-family: var(--mono); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+  .arrow { color: var(--muted); }
+  .src { font-family: var(--mono); font-size: 13px; background: var(--soft); border-radius: 6px; padding: 1px 7px; overflow-wrap: anywhere; }
+  .tf { font-size: 12px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; color: var(--clay); }
+  .args { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .why { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .preview { font-family: var(--mono); font-size: 12.5px; margin-top: 6px; overflow-wrap: anywhere; }
+  .preview .k { color: var(--muted); font-family: Manrope, sans-serif; font-size: 12px; margin-right: 6px; }
+  .preview.err { color: var(--risk); }
+  .conf { text-align: right; min-width: 74px; }
+  .conf b { font-family: "Cormorant Garamond", serif; font-size: 26px; font-weight: 500; line-height: 1; display: block; }
+  .conf small { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .conf .meter { height: 4px; border-radius: 4px; background: var(--soft); margin-top: 6px; overflow: hidden; }
+  .conf .meter i { display: block; height: 100%; border-radius: 4px; }
+  .hi b { color: var(--sage-deep); } .hi .meter i { background: var(--sage); }
+  .mid b { color: var(--clay); } .mid .meter i { background: var(--clay); }
+  .lo b { color: var(--risk); } .lo .meter i { background: var(--risk); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 24px; }
+  .panel { padding: 18px 20px; }
+  .panel h3 { font-family: "Cormorant Garamond", serif; font-weight: 500; font-size: 26px; margin: 0 0 4px; }
+  .panel > p { margin: 0 0 14px; font-size: 14px; color: var(--muted); }
+  .ask { border-top: 1px solid var(--line); padding: 12px 0; }
+  .ask:first-of-type { border-top: 0; }
+  .ask .q { font-size: 14px; margin: 4px 0 8px; }
+  .ask input { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 8px 12px; font-family: var(--mono); font-size: 13px; }
+  .warn { display: grid; grid-template-columns: auto 1fr; gap: 10px; border-top: 1px solid var(--line); padding: 12px 0; font-size: 14px; }
+  .warn:first-of-type { border-top: 0; }
+  .sev { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; height: fit-content; }
+  .sev.risk { background: var(--risk-soft); color: var(--risk); }
+  .sev.warn { background: var(--clay-soft); color: var(--clay); }
+  .sev.info { background: var(--soft); color: var(--muted); }
+
+  /* Run */
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tabs button { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 14px; }
+  .tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  pre.out { margin: 0; padding: 16px 18px; overflow: auto; max-height: 460px; font: 13px/1.55 var(--mono); }
+  .checklist { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .checklist li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .checklist li:first-child { border-top: 0; }
+  .checklist .p { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+  .checklist .r { display: block; font-size: 12.5px; color: var(--muted); }
+  .ok { color: var(--sage-deep); } .no { color: var(--risk); } .wait { color: var(--clay); }
+
+  /* How it's built */
+  .arch { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin: 6px 0 28px; }
+  .arch .node { flex: 1 1 160px; padding: 14px 16px; font-size: 14px; }
+  .arch .node b { display: block; font-family: "Cormorant Garamond", serif; font-size: 21px; font-weight: 500; }
+  .arch .node span { color: var(--muted); font-size: 13px; }
+  .arch .to { align-self: center; color: var(--clay); font-size: 20px; }
+  .decisions { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .decisions .card { padding: 18px 20px; }
+  .decisions h3 { font-family: "Cormorant Garamond", serif; font-weight: 500; font-size: 24px; margin: 0 0 6px; line-height: 1.15; }
+  .decisions p { margin: 0; font-size: 14.5px; color: var(--muted); }
+  footer { padding: 48px 0 64px; font-size: 14px; color: var(--muted); }
+  footer a { color: var(--ink); }
+
+  @media (max-width: 860px) {
+    .wrap { padding: 0 16px; }
+    .editors, .two { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr auto; }
+    .decide { grid-column: 1 / -1; order: 3; }
+    .bar nav a.hide-sm { display: none; }
+    .head .aside { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <a href="/" class="logo">Deanne Pamela Villalon<span>.</span></a>
+    <nav>
+      <a href="/#work" class="hide-sm">Work</a>
+      <a href="#how">How it's built</a>
+      <button class="theme-btn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="eyebrow">Lab · Applied AI</div>
+    <h1>Mapping <em>Copilot</em></h1>
+    <p class="lede">Most of my integration work started with the same chore: put a record from one system next to a record from another and decide which field feeds which. Here <b>Claude drafts that mapping</b> with a confidence score for every line, <b>a person approves or rejects each one</b>, and the page runs the approved mapping on the sample record.</p>
+    <div class="steps">
+      <span><b>1</b>Paste two records</span>
+      <span><b>2</b>Claude drafts the mapping</span>
+      <span><b>3</b>You approve line by line</span>
+      <span><b>4</b>Run it and export the code</span>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="head"><span class="num">01</span><h2>Two sample records</h2><span class="aside">Pick an example or paste your own JSON.</span></div>
+      <div class="presets" id="presets" role="group" aria-label="Examples"></div>
+      <div class="editors">
+        <div class="card editor">
+          <label for="srcName">Source system</label>
+          <input id="srcName" maxlength="60" autocomplete="off">
+          <textarea id="srcText" spellcheck="false" aria-label="Source record JSON"></textarea>
+          <div class="validity" id="srcValid"></div>
+        </div>
+        <div class="card editor">
+          <label for="tgtName">Target system</label>
+          <input id="tgtName" maxlength="60" autocomplete="off">
+          <textarea id="tgtText" spellcheck="false" aria-label="Target record JSON"></textarea>
+          <div class="validity" id="tgtValid"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="draftBtn">Draft the mapping</button>
+        <span class="status" id="status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="review" hidden>
+    <div class="wrap">
+      <div class="head"><span class="num">02</span><h2>Review the draft</h2><span class="aside" id="modeBox"></span></div>
+      <div class="card summary" id="summary"></div>
+      <div class="tally" id="tally"></div>
+      <div class="rows" id="rows"></div>
+      <div class="two">
+        <div class="card panel">
+          <h3>Questions for a person</h3>
+          <p>Fields Claude couldn't fill from the source without guessing. Type an answer and it becomes part of the mapping.</p>
+          <div id="asks"></div>
+        </div>
+        <div class="card panel">
+          <h3>Warnings</h3>
+          <p>Things that could cause problems in production.</p>
+          <div id="warns"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="run" hidden>
+    <div class="wrap">
+      <div class="head"><span class="num">03</span><h2>Run the approved mapping</h2><span class="aside">Updates as you approve, reject and answer.</span></div>
+      <div class="two" style="margin-top:0">
+        <div>
+          <div class="tabs" role="tablist">
+            <button role="tab" aria-selected="true" data-tab="output">Output record</button>
+            <button role="tab" aria-selected="false" data-tab="code">Generated code</button>
+          </div>
+          <pre class="card out" id="outPre"></pre>
+        </div>
+        <div class="card panel">
+          <h3>Target field checklist</h3>
+          <p>Every field in the target sample, and whether the approved mapping fills it.</p>
+          <ul class="checklist" id="checklist"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="how">
+    <div class="wrap">
+      <div class="head"><span class="num">04</span><h2>How it's built</h2></div>
+      <div class="arch">
+        <div class="card node"><b>This page</b><span>Static HTML on GitHub Pages. Sends only the two records.</span></div>
+        <div class="to" aria-hidden="true">→</div>
+        <div class="card node"><b>Cloudflare Worker</b><span>Holds the API key. Checks the origin, rate-limits and size-checks every request.</span></div>
+        <div class="to" aria-hidden="true">→</div>
+        <div class="card node"><b>Claude API</b><span>Claude Opus 5.5 with structured outputs: the answer must match a JSON schema.</span></div>
+        <div class="to" aria-hidden="true">→</div>
+        <div class="card node"><b>You, then the engine</b><span>Nothing runs until a person approves it. A small engine in the page runs the approved lines.</span></div>
+      </div>
+      <div class="decisions">
+        <div class="card"><h3>Claude drafts, a person decides</h3><p>Lines below 80% confidence start unapproved, and only approved lines run. It's the same rule I gave my Boomi agent: when the change matters, a person signs off.</p></div>
+        <div class="card"><h3>The model returns a plan, not code</h3><p>Claude picks each line's transform from a fixed list of 13, and the page's own engine runs them. Nothing the model writes is ever executed, so a malicious record can't run code in your browser. Paths like <code>__proto__</code> are refused.</p></div>
+        <div class="card"><h3>A schema instead of string parsing</h3><p>The request uses structured outputs, so the model's response has to match a JSON schema. The page checks it again before showing anything.</p></div>
+        <div class="card"><h3>Records stay data</h3><p>The system prompt lives on the server, and visitors can only send records. If a record contains text that looks like an instruction, Claude maps it as an ordinary value and flags it.</p></div>
+        <div class="card"><h3>It asks when it doesn't know</h3><p>Internal IDs and subsidiaries can't be inferred from a sample record. Instead of inventing one, Claude lists the question for a person, and the answer becomes part of the mapping.</p></div>
+        <div class="card"><h3>Built not to run up a bill</h3><p>The key never reaches the browser. Only this site's origin can call the Worker, each visitor gets 5 requests a minute, records are capped at 8 KB, and the account has a monthly spend limit.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Built by <a href="/">Deanne Pamela Villalon</a> · HTML, CSS and vanilla JavaScript, a Cloudflare Worker, and the Claude API. The example records are made up.</div>
+</footer>
+
+<script>
+(function () {
+  // Theme toggle, shared with the main site through localStorage("theme").
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  try { var saved = localStorage.getItem('theme'); if (saved) root.dataset.theme = saved; } catch (e) {}
+  btn.addEventListener('click', function () {
+    var dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+  });
+})();
+</script>
+
+<script>
+"use strict";
+
+// Where the Worker lives once deployed, e.g. "https://mapping-copilot-api.<account>.workers.dev".
+// Leave empty and the page runs the built-in examples only.
+const API_URL = "";
+
+// ---------------------------------------------------------------------------
+// Mapping engine — runs approved mappings. Model output is treated as data:
+// only known transforms run, and nothing is ever eval'd.
+// ---------------------------------------------------------------------------
+
+const TRANSFORMS = new Set([
+  "copy", "concat", "split_part", "date_format", "value_map", "to_number", "to_boolean",
+  "to_string", "uppercase", "lowercase", "coalesce", "template", "constant",
+]);
+const DATE_FORMATS = new Set(["YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY", "ISO_DATETIME", "UNIX_SECONDS", "UNIX_MS"]);
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function parsePath(path) {
+  const parts = [];
+  const re = /([^.[\]]+)|\[(\d+)\]/g;
+  let m;
+  while ((m = re.exec(path))) parts.push(m[2] !== undefined ? Number(m[2]) : m[1]);
+  if (!parts.length) throw new Error(`empty path "${path}"`);
+  for (const p of parts) if (FORBIDDEN_KEYS.has(p)) throw new Error(`path "${path}" is not allowed`);
+  return parts;
+}
+
+function getPath(obj, path) {
+  let cur = obj;
+  for (const key of parsePath(path)) {
+    if (cur === null || typeof cur !== "object" || !Object.prototype.hasOwnProperty.call(cur, key)) return undefined;
+    cur = cur[key];
+  }
+  return cur;
+}
+
+function setPath(obj, path, value) {
+  const parts = parsePath(path);
+  let cur = obj;
+  parts.forEach((key, i) => {
+    if (i === parts.length - 1) { cur[key] = value; return; }
+    if (cur[key] === undefined) cur[key] = typeof parts[i + 1] === "number" ? [] : {};
+    cur = cur[key];
+  });
+}
+
+const isEmpty = (v) => v === undefined || v === null || v === "";
+
+function requireSource(src, path) {
+  const v = getPath(src, path);
+  if (v === undefined) throw new Error(`source has no field "${path}"`);
+  return v;
+}
+
+function parseDate(value, fmt) {
+  const s = String(value).trim();
+  let y, mo, d, m;
+  if (fmt === "YYYY-MM-DD" && (m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/))) [, y, mo, d] = m;
+  else if (fmt === "MM/DD/YYYY" && (m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) [, mo, d, y] = m;
+  else if (fmt === "DD/MM/YYYY" && (m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) [, d, mo, y] = m;
+  else if (fmt === "ISO_DATETIME") { const t = Date.parse(s); if (!isNaN(t)) return new Date(t); }
+  else if (fmt === "UNIX_SECONDS" && /^\d+$/.test(s)) return new Date(Number(s) * 1000);
+  else if (fmt === "UNIX_MS" && /^\d+$/.test(s)) return new Date(Number(s));
+  if (y !== undefined) {
+    const date = new Date(Date.UTC(+y, +mo - 1, +d));
+    if (date.getUTCFullYear() === +y && date.getUTCMonth() === +mo - 1 && date.getUTCDate() === +d) return date;
+  }
+  throw new Error(`"${s}" isn't a ${fmt} date`);
+}
+
+function formatDate(date, fmt) {
+  const p = (n) => String(n).padStart(2, "0");
+  const Y = date.getUTCFullYear(), M = p(date.getUTCMonth() + 1), D = p(date.getUTCDate());
+  switch (fmt) {
+    case "YYYY-MM-DD": return `${Y}-${M}-${D}`;
+    case "MM/DD/YYYY": return `${M}/${D}/${Y}`;
+    case "DD/MM/YYYY": return `${D}/${M}/${Y}`;
+    case "ISO_DATETIME": return date.toISOString();
+    case "UNIX_SECONDS": return Math.floor(date.getTime() / 1000);
+    case "UNIX_MS": return date.getTime();
+  }
+}
+
+function toNumber(v) {
+  if (typeof v === "number") return v;
+  const m = String(v).replace(/,/g, "").match(/-?\d+(\.\d+)?/);
+  if (!m) throw new Error(`"${v}" has no number in it`);
+  return Number(m[0]);
+}
+
+function toBoolean(v) {
+  if (typeof v === "boolean") return v;
+  const s = String(v).trim().toLowerCase();
+  if (["true", "yes", "y", "1", "active"].includes(s)) return true;
+  if (["false", "no", "n", "0", "inactive"].includes(s)) return false;
+  throw new Error(`"${v}" isn't clearly true or false`);
+}
+
+function applyMapping(m, src) {
+  const first = () => requireSource(src, m.sources[0]);
+  switch (m.transform) {
+    case "copy": return first();
+    case "concat": return m.sources.map((p) => getPath(src, p)).filter((v) => !isEmpty(v)).join(m.separator ?? " ");
+    case "split_part": {
+      const parts = String(first()).split(m.separator ?? " ");
+      const i = m.part_index ?? 0;
+      const v = i < 0 ? parts[parts.length + i] : parts[i];
+      if (v === undefined) throw new Error(`no part ${i} after splitting on "${m.separator}"`);
+      return v.trim();
+    }
+    case "date_format": return formatDate(parseDate(first(), m.date_in), m.date_out);
+    case "value_map": {
+      const v = String(first());
+      const hit = m.value_map.find((e) => e.from === v) || m.value_map.find((e) => e.from.toLowerCase() === v.toLowerCase());
+      if (hit) return hit.to;
+      if (m.constant !== null) return m.constant;
+      throw new Error(`no code for "${v}"`);
+    }
+    case "to_number": return toNumber(first());
+    case "to_boolean": return toBoolean(first());
+    case "to_string": return String(first());
+    case "uppercase": return String(first()).toUpperCase();
+    case "lowercase": return String(first()).toLowerCase();
+    case "coalesce": {
+      const v = m.sources.map((p) => getPath(src, p)).find((x) => !isEmpty(x));
+      if (v === undefined) throw new Error("every source is empty");
+      return v;
+    }
+    case "template": return String(m.constant ?? "").replace(/\{([^}]+)\}/g, (_, p) => {
+      const v = requireSource(src, p.trim());
+      return isEmpty(v) ? "" : String(v);
+    });
+    case "constant": return m.constant;
+  }
+  throw new Error(`unknown transform "${m.transform}"`);
+}
+
+// Cast a mapped value to the type the target sample holds at that path.
+function castLike(value, sample) {
+  if (value === null || value === undefined) return value;
+  if (typeof sample === "boolean" && typeof value !== "boolean") return toBoolean(value);
+  if (typeof sample === "number" && typeof value !== "number") return toNumber(value);
+  if (typeof sample === "string" && typeof value !== "string") return String(value);
+  return value;
+}
+
+function runMapping(m, src, targetSample) {
+  return castLike(applyMapping(m, src), getPath(targetSample, m.target));
+}
+
+function leafPaths(obj, prefix = "") {
+  if (obj === null || typeof obj !== "object") return [prefix];
+  const entries = Array.isArray(obj) ? obj.map((v, i) => [`${prefix}[${i}]`, v]) : Object.entries(obj).map(([k, v]) => [prefix ? `${prefix}.${k}` : k, v]);
+  if (!entries.length) return [prefix];
+  return entries.flatMap(([p, v]) => leafPaths(v, p));
+}
+
+// Check the model's answer before trusting any of it.
+function normalize(raw) {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.mappings)) throw new Error("The response wasn't a mapping.");
+  const str = (v) => (typeof v === "string" ? v : "");
+  const dropped = [];
+  const mappings = raw.mappings.filter((m) => {
+    try {
+      if (!m || typeof m.target !== "string" || !TRANSFORMS.has(m.transform) || !Array.isArray(m.sources)) throw new Error("bad shape");
+      parsePath(m.target);
+      m.sources.forEach(parsePath);
+      if (m.transform === "date_format" && !(DATE_FORMATS.has(m.date_in) && DATE_FORMATS.has(m.date_out))) throw new Error("bad date format");
+      if (!["constant", "template"].includes(m.transform) && !m.sources.length) throw new Error("no source");
+      return true;
+    } catch (e) {
+      dropped.push(str(m && m.target) || "(unnamed)");
+      return false;
+    }
+  }).map((m) => ({
+    target: m.target,
+    sources: m.sources.filter((s) => typeof s === "string"),
+    transform: m.transform,
+    separator: typeof m.separator === "string" ? m.separator : null,
+    part_index: Number.isInteger(m.part_index) ? m.part_index : null,
+    date_in: m.date_in ?? null,
+    date_out: m.date_out ?? null,
+    value_map: Array.isArray(m.value_map) ? m.value_map.filter((e) => e && typeof e.from === "string" && typeof e.to === "string") : [],
+    constant: typeof m.constant === "string" ? m.constant : null,
+    confidence: Math.max(0, Math.min(1, Number(m.confidence) || 0)),
+    reasoning: str(m.reasoning),
+  }));
+  const warnings = (Array.isArray(raw.warnings) ? raw.warnings : [])
+    .filter((w) => w && typeof w.message === "string")
+    .map((w) => ({ severity: ["info", "warn", "risk"].includes(w.severity) ? w.severity : "info", field: str(w.field), message: w.message }));
+  if (dropped.length) warnings.unshift({ severity: "warn", field: dropped.join(", "), message: "The page dropped these lines because they didn't follow the mapping rules." });
+  const needs = (Array.isArray(raw.needs_human) ? raw.needs_human : [])
+    .filter((n) => n && typeof n.target === "string" && typeof n.question === "string")
+    .filter((n) => { try { parsePath(n.target); return true; } catch { return false; } });
+  return { summary: str(raw.summary), mappings, needs_human: needs, warnings };
+}
+
+// ---------------------------------------------------------------------------
+// Examples. Their responses below are hand-written to show the format, so the
+// page works before the live API is connected; with API_URL set, Claude answers.
+// ---------------------------------------------------------------------------
+
+const M = (target, sources, transform, confidence, reasoning, extra = {}) => ({
+  target, sources, transform, separator: null, part_index: null, date_in: null, date_out: null,
+  value_map: [], constant: null, confidence, reasoning, ...extra,
+});
+const VM = (obj) => Object.entries(obj).map(([from, to]) => ({ from, to }));
+
+const PRESETS = [
+  {
+    id: "hr",
+    label: "BambooHR → NetSuite employee",
+    sourceName: "BambooHR",
+    targetName: "NetSuite",
+    source: {
+      id: "4127", firstName: "Maria", lastName: "Delgado", preferredName: "Mari",
+      workEmail: "Maria.Delgado@Acme.com", jobTitle: "Senior Accountant", department: "Finance",
+      division: "North America", location: "Austin, TX", hireDate: "03/14/2023",
+      employmentHistoryStatus: "Full-Time", status: "Active", supervisorEid: "3310",
+      mobilePhone: "512-555-0148", payRate: "92000.00 USD", payType: "Salary",
+    },
+    target: {
+      externalId: "BHR-2981", firstName: "James", lastName: "Okafor", email: "james.okafor@acme.com",
+      title: "Payroll Specialist", department: { id: "12" }, subsidiary: { id: "3" }, location: { id: "7" },
+      hireDate: "2022-08-01", isInactive: false, employeeType: { id: "1" },
+      supervisor: { externalId: "BHR-1044" }, mobilePhone: "(415) 555-0193", custentity_pay_type: "SALARIED",
+    },
+    response: {
+      summary: "Names, email, title, dates, status and the supervisor link map cleanly from BambooHR. Department, subsidiary and location are NetSuite internal IDs that a sample record can't reveal, so they need a lookup table from someone who knows the account.",
+      mappings: [
+        M("externalId", ["id"], "template", 0.88, "The target's externalId looks like \"BHR-\" plus the BambooHR employee ID, which keeps reruns idempotent.", { constant: "BHR-{id}" }),
+        M("firstName", ["firstName"], "copy", 0.97, "Same field. Legal first name, not preferredName, since NetSuite drives payroll and tax records."),
+        M("lastName", ["lastName"], "copy", 0.97, "Same field in both systems."),
+        M("email", ["workEmail"], "lowercase", 0.95, "Work email is the login identity; the target stores it lowercased, so normalize case."),
+        M("title", ["jobTitle"], "copy", 0.94, "Job title maps directly to NetSuite's title."),
+        M("hireDate", ["hireDate"], "date_format", 0.93, "BambooHR sends MM/DD/YYYY here; NetSuite's sample uses ISO dates.", { date_in: "MM/DD/YYYY", date_out: "YYYY-MM-DD" }),
+        M("isInactive", ["status"], "value_map", 0.9, "NetSuite flags the opposite of BambooHR's status, so Active becomes false.", { value_map: VM({ Active: "false", Inactive: "true" }), constant: "true" }),
+        M("supervisor.externalId", ["supervisorEid"], "template", 0.84, "Supervisors are employees too, so they should carry the same BHR- external ID pattern.", { constant: "BHR-{supervisorEid}" }),
+        M("custentity_pay_type", ["payType"], "value_map", 0.78, "Salary lines up with the sample's SALARIED. Hourly → HOURLY is a guess at the custom field's codes.", { value_map: VM({ Salary: "SALARIED", Hourly: "HOURLY" }) }),
+        M("employeeType.id", ["employmentHistoryStatus"], "value_map", 0.52, "The sample shows type 1 on what is probably a full-time employee. That's one data point; the other codes are unknown.", { value_map: VM({ "Full-Time": "1" }) }),
+        M("mobilePhone", ["mobilePhone"], "copy", 0.72, "Same meaning, but the formats differ: NetSuite's sample uses (415) 555-0193, BambooHR sends 512-555-0148."),
+      ],
+      needs_human: [
+        { target: "department.id", question: "Which NetSuite department internal ID is BambooHR's \"Finance\"? (A crosswalk for every department is the real fix.)" },
+        { target: "subsidiary.id", question: "Which subsidiary does the \"North America\" division belong to?" },
+        { target: "location.id", question: "What is the NetSuite location ID for \"Austin, TX\"?" },
+      ],
+      warnings: [
+        { severity: "risk", field: "payRate", message: "Compensation data has no target field here and is deliberately left out. Confirm finance doesn't expect salary to sync, and keep it out of logs if it ever does." },
+        { severity: "warn", field: "employeeType.id", message: "Only Full-Time has a known code. Part-time and contractor records will fail this line until the code list is filled in." },
+        { severity: "warn", field: "mobilePhone", message: "Phone formats differ and there's no reformatting step. Decide whether NetSuite validates the format before go-live." },
+        { severity: "info", field: "preferredName", message: "Not mapped. If people search NetSuite by preferred name, a custom field may be worth adding." },
+      ],
+    },
+  },
+  {
+    id: "legal",
+    label: "Legal matter → Invoice",
+    sourceName: "Practice management (matter)",
+    targetName: "Accounting (invoice)",
+    source: {
+      id: 1048823, display_number: "00142-Henderson",
+      description: "Henderson v. Pacific Freight: breach of contract; client may settle below $40k",
+      status: "Open", open_date: "2026-02-03", billable: true,
+      client: { id: 553201, name: "Henderson Logistics LLC", primary_email_address: "AP@HendersonLogistics.com" },
+      responsible_attorney: { name: "Priya Raman" }, practice_area: { name: "Litigation" },
+      billing_method: "hourly", currency: "USD", unbilled_hours: 12.5, rate: 375,
+      custom_fields: { po_number: "PO-88213" },
+    },
+    target: {
+      DocNumber: "INV-00139", TxnDate: "2026-05-01",
+      CustomerRef: { value: "58", name: "Okafor & Sons" },
+      BillEmail: { Address: "billing@okafor.com" },
+      CustomerMemo: { value: "Matter 00139-Okafor" },
+      PONumber: "PO-1182", CurrencyRef: { value: "USD" },
+      Line: [{ Description: "Legal services: 8 hrs", Qty: 8, UnitPrice: 350, Amount: 2800 }],
+    },
+    response: {
+      summary: "The client, billing email, PO, currency, hours and rate map straight onto an invoice line. The line amount and the invoice number and date can't come from the matter, and the matter description must not reach a client-facing field.",
+      mappings: [
+        M("CustomerRef.name", ["client.name"], "copy", 0.95, "The matter's client is the invoice customer."),
+        M("BillEmail.Address", ["client.primary_email_address"], "lowercase", 0.92, "The client's primary email is the best billing contact available; lowercased to match the sample."),
+        M("CustomerMemo.value", ["display_number"], "template", 0.86, "The memo carries the matter number like the sample. Only the number, not the description: see the warning.", { constant: "Matter {display_number}" }),
+        M("PONumber", ["custom_fields.po_number"], "copy", 0.9, "The PO number is stored as a custom field on the matter."),
+        M("CurrencyRef.value", ["currency"], "copy", 0.97, "Both use ISO currency codes."),
+        M("Line[0].Qty", ["unbilled_hours"], "copy", 0.84, "Hourly matter: unbilled hours become the line quantity."),
+        M("Line[0].UnitPrice", ["rate"], "copy", 0.84, "The matter's hourly rate becomes the unit price."),
+        M("Line[0].Description", ["unbilled_hours"], "template", 0.74, "Follows the sample's wording. A real invoice would usually list each time entry.", { constant: "Legal services: {unbilled_hours} hrs" }),
+        M("CustomerRef.value", ["client.id"], "to_string", 0.31, "Tempting, but this is the practice-management client ID, not the accounting system's customer ID. They only match by coincidence. Reject unless the systems share IDs."),
+      ],
+      needs_human: [
+        { target: "TxnDate", question: "What invoice date should this use? Usually the billing run date, not anything on the matter." },
+        { target: "DocNumber", question: "Should the accounting system auto-number invoices? If not, what's the numbering scheme?" },
+      ],
+      warnings: [
+        { severity: "risk", field: "description", message: "The matter description contains case strategy (\"may settle below $40k\"). CustomerMemo is printed on the invoice, so the description is deliberately left out." },
+        { severity: "risk", field: "Line[0].Amount", message: "Amount is Qty × UnitPrice. The mapping language has no arithmetic, so let the accounting system calculate it or compute it in the invoicing step." },
+        { severity: "warn", field: "billing_method", message: "This only works for hourly matters. Flat-fee and contingency matters need a different line, so filter on billing_method before running." },
+        { severity: "info", field: "status", message: "Make sure closed or non-billable matters are filtered out before invoices are created." },
+      ],
+    },
+  },
+  { id: "custom", label: "Paste your own", sourceName: "Source system", targetName: "Target system", source: null, target: null, response: null },
+];
+
+// ---------------------------------------------------------------------------
+// UI
+// ---------------------------------------------------------------------------
+
+const $ = (id) => document.getElementById(id);
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined && v !== false) el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) el.append(kid instanceof Node ? kid : String(kid));
+  return el;
+}
+
+const state = {
+  preset: PRESETS[0],
+  draft: null,        // normalized mapping
+  decisions: [],      // "approved" | "rejected" | "pending", per mapping
+  answers: {},        // target path -> text typed by a person
+  source: null, target: null,
+  mode: null, meta: null, tab: "output",
+};
+
+const apiUrl = (() => {
+  const local = ["localhost", "127.0.0.1"].includes(location.hostname);
+  const override = local && new URLSearchParams(location.search).get("api");
+  return override || API_URL;
+})();
+
+function pretty(v) { return JSON.stringify(v, null, 2); }
+
+function loadPreset(p) {
+  state.preset = p;
+  $("srcName").value = p.sourceName;
+  $("tgtName").value = p.targetName;
+  $("srcText").value = p.source ? pretty(p.source) : "{\n  \n}";
+  $("tgtText").value = p.target ? pretty(p.target) : "{\n  \n}";
+  document.querySelectorAll("#presets .chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.id === p.id)));
+  validate();
+  setStatus(p.id === "custom" && !apiUrl ? "Pasting your own records needs the live API, which isn't connected on this copy of the page. The examples work offline." : "");
+}
+
+function readJson(id, validId) {
+  const box = $(validId);
+  try {
+    const v = JSON.parse($(id).value);
+    if (v === null || typeof v !== "object" || Array.isArray(v)) throw new Error("Needs to be a JSON object { … }");
+    const n = leafPaths(v).filter(Boolean).length;
+    box.textContent = `Valid JSON · ${n} field${n === 1 ? "" : "s"}`;
+    box.classList.remove("bad");
+    return v;
+  } catch (e) {
+    box.textContent = e.message;
+    box.classList.add("bad");
+    return null;
+  }
+}
+
+function validate() {
+  return { source: readJson("srcText", "srcValid"), target: readJson("tgtText", "tgtValid") };
+}
+
+function setStatus(text, bad = false) {
+  const s = $("status");
+  s.textContent = text;
+  s.classList.toggle("bad", bad);
+}
+
+function matchesPreset(source, target) {
+  const p = state.preset;
+  return p.response && JSON.stringify(source) === JSON.stringify(p.source) && JSON.stringify(target) === JSON.stringify(p.target);
+}
+
+async function callApi(source, target) {
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source, target, sourceName: $("srcName").value, targetName: $("tgtName").value }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status}).`);
+  return body;
+}
+
+async function draft() {
+  const { source, target } = validate();
+  if (!source || !target) { setStatus("Fix the JSON above first.", true); return; }
+  const btn = $("draftBtn");
+  btn.disabled = true;
+  let result, mode, meta = null, note = "";
+
+  if (apiUrl) {
+    const started = Date.now();
+    const tick = () => setStatus(`Claude is drafting the mapping… ${Math.round((Date.now() - started) / 1000)}s (usually 15–45s)`);
+    tick();
+    const timer = setInterval(tick, 1000);
+    try {
+      const body = await callApi(source, target);
+      result = body.mapping; mode = "live"; meta = body;
+    } catch (e) {
+      if (matchesPreset(source, target)) { result = state.preset.response; mode = "saved"; note = `Live request failed (${e.message}) so this is the built-in example.`; }
+      else { clearInterval(timer); btn.disabled = false; setStatus(e.message, true); return; }
+    }
+    clearInterval(timer);
+  } else if (matchesPreset(source, target)) {
+    result = state.preset.response; mode = "saved";
+  } else {
+    btn.disabled = false;
+    setStatus("The live API isn't connected on this copy of the page, so only the unedited examples can be drafted.", true);
+    return;
+  }
+
+  try {
+    state.draft = normalize(result);
+  } catch (e) {
+    btn.disabled = false; setStatus(e.message, true); return;
+  }
+  Object.assign(state, { source, target, mode, meta, answers: {} });
+  state.decisions = state.draft.mappings.map((m) => (m.confidence >= 0.8 ? "approved" : "pending"));
+  btn.disabled = false;
+  setStatus(note || (mode === "live" ? "Draft ready. Review it below." : "Example draft loaded. Review it below."));
+  renderReview();
+  $("review").hidden = false;
+  $("run").hidden = false;
+  renderRun();
+  $("review").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+
+function confClass(c) { return c >= 0.8 ? "hi" : c >= 0.6 ? "mid" : "lo"; }
+
+function argsText(m) {
+  switch (m.transform) {
+    case "template": case "constant": return JSON.stringify(m.constant);
+    case "concat": return `joined with ${JSON.stringify(m.separator ?? " ")}`;
+    case "split_part": return `split on ${JSON.stringify(m.separator ?? " ")}, part ${m.part_index ?? 0}`;
+    case "date_format": return `${m.date_in} → ${m.date_out}`;
+    case "value_map": return m.value_map.map((e) => `${e.from} → ${e.to}`).join(" · ") + (m.constant !== null ? ` · else ${m.constant}` : "");
+    default: return "";
+  }
+}
+
+function previewOf(m) {
+  try { return { ok: true, text: JSON.stringify(runMapping(m, state.source, state.target)) }; }
+  catch (e) { return { ok: false, text: e.message }; }
+}
+
+function renderReview() {
+  const d = state.draft;
+  $("modeBox").replaceChildren(
+    state.mode === "live"
+      ? h("span", { class: "mode live", title: `${state.meta.usage.input_tokens} input / ${state.meta.usage.output_tokens} output tokens` }, `Live · ${state.meta.model}`)
+      : h("span", { class: "mode saved", title: "A hand-written example in the same format Claude returns" }, "Built-in example"),
+  );
+  $("summary").textContent = d.summary || "Draft ready.";
+
+  $("rows").replaceChildren(...d.mappings.map((m, i) => {
+    const dec = state.decisions[i];
+    const pv = previewOf(m);
+    const set = (v) => { state.decisions[i] = state.decisions[i] === v ? "pending" : v; renderReview(); renderRun(); };
+    const args = argsText(m);
+    return h("div", { class: `card row ${dec}` },
+      h("div", { class: "decide" },
+        h("button", { class: "yes", "aria-pressed": String(dec === "approved"), "aria-label": `Approve ${m.target}`, title: "Approve", onclick: () => set("approved") }, "✓"),
+        h("button", { class: "no", "aria-pressed": String(dec === "rejected"), "aria-label": `Reject ${m.target}`, title: "Reject", onclick: () => set("rejected") }, "✕"),
+      ),
+      h("div", {},
+        h("div", { class: "flow" },
+          h("span", { class: "target" }, m.target),
+          h("span", { class: "arrow", "aria-hidden": "true" }, "←"),
+          h("span", { class: "tf" }, m.transform.replace("_", " ")),
+          m.sources.map((s) => h("span", { class: "src" }, s)),
+          args && h("span", { class: "args" }, args),
+        ),
+        h("div", { class: "why" }, m.reasoning),
+        h("div", { class: `preview ${pv.ok ? "" : "err"}` }, h("span", { class: "k" }, pv.ok ? "On this record:" : "Fails:"), pv.text),
+      ),
+      h("div", { class: `conf ${confClass(m.confidence)}` },
+        h("b", {}, `${Math.round(m.confidence * 100)}%`),
+        h("small", {}, dec === "pending" ? "needs you" : dec),
+        h("div", { class: "meter" }, h("i", { style: `width:${Math.round(m.confidence * 100)}%` })),
+      ),
+    );
+  }));
+
+  const count = (s) => state.decisions.filter((x) => x === s).length;
+  const pending = count("pending");
+  $("tally").replaceChildren(
+    h("span", { class: "pill" }, h("b", {}, count("approved")), " approved"),
+    h("span", { class: "pill" }, h("b", {}, pending), " waiting on you"),
+    h("span", { class: "pill" }, h("b", {}, count("rejected")), " rejected"),
+    pending > 0 && h("button", { class: "btn ghost", onclick: () => { state.decisions = state.decisions.map((x) => (x === "pending" ? "approved" : x)); renderReview(); renderRun(); } }, "Approve the rest"),
+  );
+
+  $("asks").replaceChildren(...(d.needs_human.length ? d.needs_human.map((n) =>
+    h("div", { class: "ask" },
+      h("span", { class: "target" }, n.target),
+      h("div", { class: "q" }, n.question),
+      h("input", {
+        value: state.answers[n.target] ?? "", placeholder: "Your answer, e.g. a NetSuite internal ID",
+        "aria-label": `Answer for ${n.target}`,
+        oninput: (e) => { state.answers[n.target] = e.target.value; renderRun(); },
+      }),
+    )) : [h("p", { class: "muted" }, "None. Claude could fill every target field.")]));
+
+  $("warns").replaceChildren(...(d.warnings.length ? d.warnings.map((w) =>
+    h("div", { class: "warn" }, h("span", { class: `sev ${w.severity}` }, w.severity), h("div", {}, w.field && h("span", { class: "target" }, w.field, " "), h("div", {}, w.message))),
+  ) : [h("p", { class: "muted" }, "No warnings.")]));
+}
+
+function approvedMappings() {
+  const mappings = state.draft.mappings.filter((_, i) => state.decisions[i] === "approved");
+  const answered = state.draft.needs_human
+    .filter((n) => !isEmpty((state.answers[n.target] ?? "").trim()))
+    .map((n) => M(n.target, [], "constant", 1, "Answered by a person.", { constant: state.answers[n.target].trim() }));
+  return mappings.concat(answered);
+}
+
+function renderRun() {
+  const out = {};
+  const errors = {};
+  const mappings = approvedMappings();
+  for (const m of mappings) {
+    try { setPath(out, m.target, runMapping(m, state.source, state.target)); }
+    catch (e) { errors[m.target] = e.message; }
+  }
+
+  $("outPre").textContent = state.tab === "output" ? pretty(out) : generateCode(mappings);
+
+  const byTarget = new Map();
+  state.draft.mappings.forEach((m, i) => byTarget.set(m.target, state.decisions[i]));
+  const asked = new Set(state.draft.needs_human.map((n) => n.target));
+  const items = leafPaths(state.target).filter(Boolean).map((p) => {
+    let icon, cls, reason;
+    if (errors[p]) [icon, cls, reason] = ["✕", "no", `Approved, but it fails: ${errors[p]}`];
+    else if (getPath(out, p) !== undefined) [icon, cls, reason] = ["✓", "ok", asked.has(p) ? "Filled from your answer" : "Filled"];
+    else if (byTarget.get(p) === "pending") [icon, cls, reason] = ["…", "wait", "Mapped, waiting for approval"];
+    else if (byTarget.get(p) === "rejected") [icon, cls, reason] = ["–", "no", "Mapping rejected"];
+    else if (asked.has(p)) [icon, cls, reason] = ["?", "wait", "Waiting for a person's answer"];
+    else [icon, cls, reason] = ["–", "no", "No mapping. See the warnings."];
+    return h("li", {}, h("span", { class: cls, "aria-hidden": "true" }, icon), h("div", {}, h("span", { class: "p" }, p), h("span", { class: "r" }, reason)));
+  });
+  $("checklist").replaceChildren(...items);
+}
+
+// Standalone versions of the engine's helpers, so the exported code runs as-is.
+const HELPERS = {
+  get: `const get = (obj, path) => path.match(/[^.[\\]]+/g).reduce((v, k) => (v == null ? undefined : v[k]), obj);`,
+  set: `function set(obj, path, value) {
+  const keys = path.match(/[^.[\\]]+/g);
+  keys.slice(0, -1).forEach((k, i) => { obj = obj[k] ??= /^\\d+$/.test(keys[i + 1]) ? [] : {}; });
+  obj[keys[keys.length - 1]] = value;
+}`,
+  notEmpty: `const notEmpty = (v) => v !== undefined && v !== null && v !== "";`,
+  fill: `const fill = (template, src) => template.replace(/\\{([^}]+)\\}/g, (_, p) => get(src, p.trim()) ?? "");`,
+  lookup: `function lookup(value, codes, fallback) {
+  const v = String(value);
+  const hit = codes[v] ?? Object.entries(codes).find(([k]) => k.toLowerCase() === v.toLowerCase())?.[1];
+  if (hit !== undefined) return hit;
+  if (fallback !== null) return fallback;
+  throw new Error(\`no code for "\${v}"\`);
+}`,
+  splitPart: `const splitPart = (value, sep, i) => String(value).split(sep).at(i)?.trim();`,
+  toNumber: `function toNumber(v) {
+  if (typeof v === "number") return v;
+  const m = String(v).replace(/,/g, "").match(/-?\\d+(\\.\\d+)?/);
+  if (!m) throw new Error(\`"\${v}" has no number in it\`);
+  return Number(m[0]);
+}`,
+  toBoolean: `function toBoolean(v) {
+  if (typeof v === "boolean") return v;
+  const s = String(v).trim().toLowerCase();
+  if (["true", "yes", "y", "1", "active"].includes(s)) return true;
+  if (["false", "no", "n", "0", "inactive"].includes(s)) return false;
+  throw new Error(\`"\${v}" isn't clearly true or false\`);
+}`,
+  reformatDate: `function reformatDate(value, from, to) {
+  const s = String(value).trim();
+  const ymd = (y, m, d) => new Date(Date.UTC(+y, +m - 1, +d));
+  let date;
+  if (from === "YYYY-MM-DD") { const [y, m, d] = s.split("-"); date = ymd(y, m, d); }
+  else if (from === "MM/DD/YYYY") { const [m, d, y] = s.split("/"); date = ymd(y, m, d); }
+  else if (from === "DD/MM/YYYY") { const [d, m, y] = s.split("/"); date = ymd(y, m, d); }
+  else if (from === "UNIX_SECONDS") date = new Date(Number(s) * 1000);
+  else if (from === "UNIX_MS") date = new Date(Number(s));
+  else date = new Date(s);
+  if (isNaN(date)) throw new Error(\`"\${value}" isn't a \${from} date\`);
+  const iso = date.toISOString(), Y = iso.slice(0, 4), M = iso.slice(5, 7), D = iso.slice(8, 10);
+  return { "YYYY-MM-DD": \`\${Y}-\${M}-\${D}\`, "MM/DD/YYYY": \`\${M}/\${D}/\${Y}\`, "DD/MM/YYYY": \`\${D}/\${M}/\${Y}\`,
+    ISO_DATETIME: iso, UNIX_SECONDS: Math.floor(date / 1000), UNIX_MS: +date }[to];
+}`,
+};
+
+// The page casts each value to the target sample's type; the export spells that out.
+function castWrap(m, expr) {
+  const sample = getPath(state.target, m.target);
+  if (typeof sample === "boolean" && m.transform !== "to_boolean") return `toBoolean(${expr})`;
+  if (typeof sample === "number" && !["to_number", "copy", "coalesce"].includes(m.transform)) return `toNumber(${expr})`;
+  if (typeof sample === "number") {
+    try { if (typeof applyMapping(m, state.source) !== "number") return `toNumber(${expr})`; } catch {}
+  }
+  if (typeof sample === "string" && ["copy", "coalesce"].includes(m.transform)) {
+    try { if (typeof applyMapping(m, state.source) !== "string") return `String(${expr})`; } catch {}
+  }
+  return expr;
+}
+
+function generateCode(mappings) {
+  const q = JSON.stringify;
+  const src = (p) => `get(src, ${q(p)})`;
+  const lines = mappings.map((m) => {
+    let expr;
+    switch (m.transform) {
+      case "copy": expr = src(m.sources[0]); break;
+      case "concat": expr = `[${m.sources.map(src).join(", ")}].filter(notEmpty).join(${q(m.separator ?? " ")})`; break;
+      case "split_part": expr = `splitPart(${src(m.sources[0])}, ${q(m.separator ?? " ")}, ${m.part_index ?? 0})`; break;
+      case "date_format": expr = `reformatDate(${src(m.sources[0])}, ${q(m.date_in)}, ${q(m.date_out)})`; break;
+      case "value_map": expr = `lookup(${src(m.sources[0])}, ${q(Object.fromEntries(m.value_map.map((e) => [e.from, e.to])))}, ${q(m.constant)})`; break;
+      case "to_number": expr = `toNumber(${src(m.sources[0])})`; break;
+      case "to_boolean": expr = `toBoolean(${src(m.sources[0])})`; break;
+      case "to_string": expr = `String(${src(m.sources[0])})`; break;
+      case "uppercase": expr = `String(${src(m.sources[0])}).toUpperCase()`; break;
+      case "lowercase": expr = `String(${src(m.sources[0])}).toLowerCase()`; break;
+      case "coalesce": expr = `[${m.sources.map(src).join(", ")}].find(notEmpty)`; break;
+      case "template": expr = `fill(${q(m.constant)}, src)`; break;
+      case "constant": expr = q(m.constant); break;
+    }
+    return `  set(out, ${q(m.target)}, ${castWrap(m, expr)});`;
+  });
+  const body = lines.join("\n");
+  const used = Object.keys(HELPERS).filter((name) => name === "set" || name === "get" || new RegExp(`\\b${name}\\(|\\.find\\(${name}\\)|\\.filter\\(${name}\\)`).test(body));
+  return [
+    `// ${$("srcName").value} → ${$("tgtName").value}`,
+    "// Generated from the approved mappings. Runs as-is: no dependencies.",
+    "",
+    ...used.map((name) => HELPERS[name]),
+    "",
+    "export function mapRecord(src) {",
+    "  const out = {};",
+    ...(lines.length ? lines : ["  // Nothing approved yet."]),
+    "  return out;",
+    "}",
+  ].join("\n");
+}
+
+// Wire up
+$("presets").append(...PRESETS.map((p) => h("button", { class: "chip", "data-id": p.id, "aria-pressed": "false", onclick: () => loadPreset(p) }, p.label)));
+["srcText", "tgtText"].forEach((id) => $(id).addEventListener("input", validate));
+$("draftBtn").addEventListener("click", draft);
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
+  state.tab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+  if (state.draft) renderRun();
+}));
+loadPreset(PRESETS[0]);
+</script>
+</body>
+</html>
